@@ -2,8 +2,10 @@
 
 A photo-first social app. Turborepo monorepo with a Next.js web client and a FastAPI API on PostgreSQL (Supabase).
 
-**Current scope:** account creation (register / log in / log out), photo post uploading, and the home feed.
-Follows, likes, comments, search, notifications and moderation are planned — see `plan.md`.
+**Current scope:** account creation (register / log in / log out), photo post uploading, the home feed,
+likes and comments. Follows, saves, search, notifications and moderation are planned — see `plan.md`.
+
+Visual design follows `DESIGN.md` (90s xerox/zine): tokens live in `apps/web/src/app/globals.css`.
 
 ```text
 apps/web    Next.js 16 (App Router, Tailwind v4) — UI, served on :3000
@@ -51,6 +53,7 @@ The migration enables Row Level Security on every table with no policies, so Sup
 | api | `FRONTEND_ORIGINS` | JSON list of allowed browser origins (CORS + Origin check) |
 | api | `COOKIE_SECURE` | `true` in production (HTTPS-only cookies) |
 | api | `SESSION_TTL_DAYS`, `MEDIA_ROOT`, `MAX_UPLOAD_BYTES` | Session lifetime, image directory, per-image cap |
+| api | `REGISTER_LIMIT_PER_HOUR` | Sign-ups per IP per hour (default 5) |
 | web | `API_ORIGIN` | Server-only. Where Next forwards `/api/v1/*` and server-side fetches |
 | tests | `TEST_DATABASE_URL`, `E2E_DATABASE_URL` | Disposable local DBs (default `localhost/socially_test`, `socially_e2e`) |
 

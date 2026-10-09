@@ -1,11 +1,12 @@
 # Implementation Plan
 
 > **Current slice (done):** register / login / logout with server-side sessions + CSRF, photo post upload
-> (multi-image, validated + re-encoded), home feed with cursor pagination, post delete. Backend: 19 pytest
-> tests; web: 11 vitest tests + 6 Playwright E2E. Items below are checked only when fully done.
+> (multi-image, validated + re-encoded), home feed with cursor pagination, post delete, likes (idempotent,
+> concurrency-safe) and comments (paginated, author/post-owner delete). Backend: 28 pytest tests;
+> web: 13 vitest tests + 7 Playwright E2E. UI follows `DESIGN.md`. Items below are checked only when fully done.
 >
 > **Next steps:** S3-compatible storage + upload intents → profile pages/editing → follow graph (feed
-> filtering) → likes/comments/saves → search/notifications → block/report → email verification/reset.
+> filtering) → saved posts + like/comment notifications → search/notifications → block/report → email verification/reset.
 
 Build in vertical slices. Each phase should end with a runnable application and tests. Do not start stories, reels, or DMs before the core feed and privacy model are reliable.
 
