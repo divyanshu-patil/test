@@ -1,0 +1,32 @@
+# Local alternative to Supabase: Postgres + API. Run the web app with `pnpm --filter web dev`.
+services:
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: socially
+      POSTGRES_PASSWORD: socially
+      POSTGRES_DB: socially
+    ports: ["5432:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U socially"]
+      interval: 3s
+      retries: 20
+
+  api:
+    build: apps/api
+    environment:
+      DATABASE_URL: postgresql+psycopg://socially:socially@db:5432/socially
+      SECRET_KEY: local-dev-only-secret-key-change-me-0123456789
+      FRONTEND_ORIGINS: '["http://localhost:3000"]'
+      MEDIA_ROOT: /data/media
+    # Migrations run as an explicit step, not on every API boot in production.
+    command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --forwarded-allow-ips='*'"
+    ports: ["8000:8000"]
+    volumes: [media:/data/media]
+    depends_on:
+      db: { condition: service_healthy }
+
+volumes:
+  pgdata:
+  media:

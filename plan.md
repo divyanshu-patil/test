@@ -1,10 +1,17 @@
 # Implementation Plan
 
+> **Current slice (done):** register / login / logout with server-side sessions + CSRF, photo post upload
+> (multi-image, validated + re-encoded), home feed with cursor pagination, post delete. Backend: 19 pytest
+> tests; web: 11 vitest tests + 6 Playwright E2E. Items below are checked only when fully done.
+>
+> **Next steps:** S3-compatible storage + upload intents → profile pages/editing → follow graph (feed
+> filtering) → likes/comments/saves → search/notifications → block/report → email verification/reset.
+
 Build in vertical slices. Each phase should end with a runnable application and tests. Do not start stories, reels, or DMs before the core feed and privacy model are reliable.
 
 ## Phase 0 — Repository foundation
-- [ ] Create pnpm workspace and Turborepo tasks.
-- [ ] Add Next.js TypeScript app and FastAPI app.
+- [x] Create pnpm workspace and Turborepo tasks.
+- [x] Add Next.js TypeScript app and FastAPI app.
 - [ ] Add environment examples, formatting/linting, editor settings, and contribution instructions.
 - [ ] Add local PostgreSQL (and optional Redis/MinIO) via Docker Compose.
 - [ ] Add CI for frontend checks, API lint/tests, and migration validation.
@@ -12,11 +19,11 @@ Build in vertical slices. Each phase should end with a runnable application and 
 **Done when:** a developer can clone, install, run both apps, and access health endpoints.
 
 ## Phase 1 — Data and API foundation
-- [ ] Configure Pydantic settings and database sessions.
-- [ ] Add SQLAlchemy models and Alembic migrations.
-- [ ] Add consistent error handling, request IDs, logging, and `/health/live`, `/health/ready`.
-- [ ] Establish `/api/v1` router and OpenAPI contract.
-- [ ] Add pytest fixtures and a test database.
+- [x] Configure Pydantic settings and database sessions.
+- [x] Add SQLAlchemy models and Alembic migrations.
+- [x] Add consistent error handling, request IDs, logging, and `/health/live`, `/health/ready`.
+- [x] Establish `/api/v1` router and OpenAPI contract.
+- [x] Add pytest fixtures and a test database.
 
 **Done when:** migrations run cleanly and API tests execute in CI.
 

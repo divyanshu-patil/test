@@ -176,3 +176,16 @@ Structured logs with request IDs; health/readiness endpoints; error monitoring; 
 
 ## 13. Deployment
 Deploy Next.js and FastAPI independently. Use managed PostgreSQL and object storage in production. Run Alembic migrations as a controlled release step, not automatically from every API worker. Configure HTTPS, trusted hosts, CORS, secure cookies, backups, and monitoring. Containerize the API and local dependencies for consistent development.
+
+## 14. Implementation decisions (current slice)
+Scope implemented: registration, login/logout, photo post upload, home feed, post delete.
+
+- **Database:** Supabase Postgres. Runtime uses the transaction pooler (psycopg with `prepare_threshold=None`); Alembic uses the session pooler via `MIGRATION_DATABASE_URL`. Every table has RLS enabled with no policies so Supabase's Data API exposes nothing; the API connects as the owner and bypasses RLS.
+- **Sessions:** opaque random token in an HttpOnly, SameSite=Lax cookie (`socially_session`); only its SHA-256 is stored (`user_sessions`). Logout deletes the row (server-side revocation); login always issues a fresh token (no fixation).
+- **CSRF:** `socially_csrf` cookie = HMAC(SECRET_KEY, session token), echoed by the client in `X-CSRF-Token` on unsafe methods. Unsafe requests with a foreign `Origin` are rejected.
+- **Same-origin API:** the browser calls `/api/v1/*` on the web origin; Next.js rewrites forward to FastAPI. Cookies stay first-party and no credentialed CORS is required. Server components call the API directly with the session cookie (`src/lib/server-api.ts`).
+- **Route protection:** `src/proxy.ts` redirects on cookie presence (routing hint only); the `(main)` layout verifies the session with the API; the API enforces auth on every endpoint.
+- **Uploads:** a single multipart `POST /api/v1/posts` (≤10 images, ≤10 MB each). Pillow decodes the bytes (filename/MIME ignored), applies EXIF orientation, and re-encodes to WebP at 1440px and 640px, which strips metadata. Files live on local disk under `MEDIA_ROOT`; served by `GET /api/v1/media/{id}` behind auth. Upload intents + S3-compatible storage come next, behind the same `services/media.py` boundary.
+- **Feed:** all non-deleted posts from active users, newest first, cursor = base64(`created_at|id`) with `(created_at, id)` index. Becomes follow-filtered when the follow graph lands.
+- **Deletion:** posts are soft-deleted (`deleted_at`); their image files are removed immediately.
+- **Rate limits:** in-process sliding window (register 5/h/IP, login 20/5min/IP + 10/5min/identifier, uploads 30/h/user). Single API worker until moved to Redis.

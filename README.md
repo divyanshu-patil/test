@@ -1,159 +1,89 @@
-# Turborepo starter
+# Socially
 
-This Turborepo starter is maintained by the Turborepo core team.
+A photo-first social app. Turborepo monorepo with a Next.js web client and a FastAPI API on PostgreSQL (Supabase).
 
-## Using this example
+**Current scope:** account creation (register / log in / log out), photo post uploading, and the home feed.
+Follows, likes, comments, search, notifications and moderation are planned — see `plan.md`.
 
-Run the following command:
-
-```sh
-npx create-turbo@latest
+```text
+apps/web    Next.js 16 (App Router, Tailwind v4) — UI, served on :3000
+apps/api    FastAPI + SQLAlchemy 2 + Alembic — API on :8000
+packages/   shared eslint / typescript config, ui stub
 ```
 
-## What's inside?
+## Prerequisites
 
-This Turborepo includes the following packages/apps:
+- Node 24+, pnpm 11
+- Python 3.12 and [uv](https://docs.astral.sh/uv/)
+- PostgreSQL: a Supabase project (default) or local Postgres / `docker compose up db`
+- Local Postgres for the test suites (tests never touch the dev database)
 
-### Apps and Packages
-
-- `docs`: a [Next.js](https://nextjs.org/) app
-- `web`: another [Next.js](https://nextjs.org/) app
-- `@repo/ui`: a stub React component library shared by both `web` and `docs` applications
-- `@repo/eslint-config`: `eslint` configurations (includes `@next/eslint-plugin-next` and `eslint-config-prettier`)
-- `@repo/typescript-config`: `tsconfig.json`s used throughout the monorepo
-
-Each package/app is 100% [TypeScript](https://www.typescriptlang.org/).
-
-### Utilities
-
-This Turborepo has some additional tools already setup for you:
-
-- [TypeScript](https://www.typescriptlang.org/) for static type checking
-- [ESLint](https://eslint.org/) for code linting
-- [Prettier](https://prettier.io) for code formatting
-
-### Build
-
-To build all apps and packages, run the following command:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
+## Setup
 
 ```sh
-cd my-turborepo
-turbo build
+pnpm install
+cd apps/api && uv sync && cp .env.example .env   # then fill in DATABASE_URL, SECRET_KEY
+cd ../web && cp .env.example .env.local
+cd ../.. && pnpm migrate                          # alembic upgrade head
+pnpm dev                                          # web :3000 + api :8000 in the turbo TUI
 ```
 
-Without global `turbo`, use your package manager:
+`pnpm dev` opens Turborepo's terminal UI with one pane per app: use ↑/↓ to switch between `web#dev` and
+`api#dev`, `i` to interact with the selected task, and `Ctrl+C` to stop both. In terminals without a
+TTY (CI, some IDE consoles) use `pnpm dev:stream` for interleaved, prefixed logs.
+
+Open http://localhost:3000. API docs (OpenAPI): http://localhost:8000/docs.
+
+### Using Supabase
+
+Use the **transaction pooler** (port 6543) for `DATABASE_URL` and the **session pooler** (port 5432) for
+`MIGRATION_DATABASE_URL`. URL-encode special characters in the password (`@` → `%40`).
+The migration enables Row Level Security on every table with no policies, so Supabase's Data API
+(anon/authenticated roles) can't read them; the API connects as the table owner, which bypasses RLS.
+
+## Environment variables
+
+| Where | Variable | Purpose |
+| --- | --- | --- |
+| api | `DATABASE_URL` | Runtime Postgres URL (`postgresql+psycopg://…`) |
+| api | `MIGRATION_DATABASE_URL` | Optional URL for Alembic (session-mode connection) |
+| api | `SECRET_KEY` | ≥32 chars; signs CSRF tokens |
+| api | `FRONTEND_ORIGINS` | JSON list of allowed browser origins (CORS + Origin check) |
+| api | `COOKIE_SECURE` | `true` in production (HTTPS-only cookies) |
+| api | `SESSION_TTL_DAYS`, `MEDIA_ROOT`, `MAX_UPLOAD_BYTES` | Session lifetime, image directory, per-image cap |
+| web | `API_ORIGIN` | Server-only. Where Next forwards `/api/v1/*` and server-side fetches |
+| tests | `TEST_DATABASE_URL`, `E2E_DATABASE_URL` | Disposable local DBs (default `localhost/socially_test`, `socially_e2e`) |
+
+The browser only ever calls same-origin `/api/v1/*`, so no `NEXT_PUBLIC_*` variable is needed.
+
+## Commands
 
 ```sh
-cd my-turborepo
-npx turbo build
-pnpm exec turbo build
-pnpm exec turbo build
+pnpm lint          # eslint (web) + ruff (api)
+pnpm typecheck     # tsc (web) + mypy (api)
+pnpm test          # vitest (web) + pytest (api, creates/migrates socially_test)
+pnpm e2e           # Playwright: boots an isolated API (:8100, socially_e2e) + production web build (:3100)
+pnpm build         # next build
+pnpm migrate       # alembic upgrade head
+cd apps/api && uv run alembic revision -m "describe change"   # new migration
 ```
 
-You can build a specific package by using a [filter](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters):
+First E2E run: `pnpm --filter web exec playwright install chromium`.
 
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
+## Deployment
 
-```sh
-turbo build --filter=docs
-```
+- **API:** `apps/api/Dockerfile`. Run `alembic upgrade head` as a release step, then start uvicorn.
+  Set `COOKIE_SECURE=true`, a strong `SECRET_KEY`, and `FRONTEND_ORIGINS` to the real site origin.
+  Mount persistent storage at `MEDIA_ROOT`. Run a **single worker** until rate limiting moves to Redis.
+- **Web:** `pnpm --filter web build && pnpm --filter web start` (or any Next host) with `API_ORIGIN` set.
+- **Proxy/IP:** put the web app behind a load balancer that *overwrites* `X-Forwarded-For`; Next only
+  sets it when absent, so client-supplied values would otherwise reach the API's IP-based rate limits.
+- `docker compose up` gives a self-contained Postgres + API for local use.
 
-Without global `turbo`:
+## Known limitations
 
-```sh
-npx turbo build --filter=docs
-pnpm exec turbo build --filter=docs
-pnpm exec turbo build --filter=docs
-```
-
-### Develop
-
-To develop all apps and packages, run the following command:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
-
-```sh
-cd my-turborepo
-turbo dev
-```
-
-Without global `turbo`, use your package manager:
-
-```sh
-cd my-turborepo
-npx turbo dev
-pnpm exec turbo dev
-pnpm exec turbo dev
-```
-
-You can develop a specific package by using a [filter](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters):
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
-
-```sh
-turbo dev --filter=web
-```
-
-Without global `turbo`:
-
-```sh
-npx turbo dev --filter=web
-pnpm exec turbo dev --filter=web
-pnpm exec turbo dev --filter=web
-```
-
-### Remote Caching
-
-> [!TIP]
-> Vercel Remote Cache is free for all plans. Get started today at [vercel.com](https://vercel.com/signup?utm_source=remote-cache-sdk&utm_campaign=free_remote_cache).
-
-Turborepo can use a technique known as [Remote Caching](https://turborepo.dev/docs/core-concepts/remote-caching) to share cache artifacts across machines, enabling you to share build caches with your team and CI/CD pipelines.
-
-By default, Turborepo will cache locally. To enable Remote Caching you will need an account with Vercel. If you don't have an account you can [create one](https://vercel.com/signup?utm_source=turborepo-examples), then enter the following commands:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
-
-```sh
-cd my-turborepo
-turbo login
-```
-
-Without global `turbo`, use your package manager:
-
-```sh
-cd my-turborepo
-npx turbo login
-pnpm exec turbo login
-pnpm exec turbo login
-```
-
-This will authenticate the Turborepo CLI with your [Vercel account](https://vercel.com/docs/concepts/personal-accounts/overview).
-
-Next, you can link your Turborepo to your Remote Cache by running the following command from the root of your Turborepo:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
-
-```sh
-turbo link
-```
-
-Without global `turbo`:
-
-```sh
-npx turbo link
-pnpm exec turbo link
-pnpm exec turbo link
-```
-
-## Useful Links
-
-Learn more about the power of Turborepo:
-
-- [Tasks](https://turborepo.dev/docs/crafting-your-repository/running-tasks)
-- [Caching](https://turborepo.dev/docs/crafting-your-repository/caching)
-- [Remote Caching](https://turborepo.dev/docs/core-concepts/remote-caching)
-- [Filtering](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters)
-- [Configuration Options](https://turborepo.dev/docs/reference/configuration)
-- [CLI Usage](https://turborepo.dev/docs/reference/command-line-reference)
+- Media is stored on the API's local disk (`MEDIA_ROOT`), not S3-compatible storage yet.
+- The feed shows all posts newest-first; follow-based filtering arrives with the follow graph.
+- Rate limits are in-process memory (reset on restart, per-worker).
+- No email verification / password reset yet (required before public launch).
+- `docker compose` / Dockerfile were config-validated but not built here (Docker daemon was off).

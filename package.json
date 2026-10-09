@@ -3,10 +3,15 @@
   "private": true,
   "scripts": {
     "build": "turbo run build",
-    "dev": "turbo run dev",
+    "dev": "turbo run dev --filter=web --filter=api --ui=tui",
+    "dev:stream": "turbo run dev --filter=web --filter=api --ui=stream",
     "lint": "turbo run lint",
-    "format": "prettier --write \"**/*.{ts,tsx,md}\"",
-    "check-types": "turbo run check-types"
+    "format": "prettier --write \"**/*.{ts,tsx,md}\" && pnpm --filter api format",
+    "check-types": "turbo run check-types",
+    "typecheck": "turbo run check-types",
+    "test": "turbo run test",
+    "e2e": "turbo run e2e --filter=web",
+    "migrate": "pnpm --filter api migrate"
   },
   "devDependencies": {
     "prettier": "3.9.6",
